@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DFA Minimizer</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header>
+  <h1>DFA <em>Minimizer</em></h1>
+  <div class="exs">
+    <button class="ex" onclick="loadEx('redundant')">Redundant states</button>
+    <button class="ex" onclick="loadEx('even0')">Even 0s &amp; 1s</button>
+    <button class="ex" onclick="loadEx('div3')">Div by 3</button>
+    <button class="ex" onclick="loadEx('ends1')">Ends with 1</button>
+  </div>
+</header>
+
+<div class="body">
+  <div class="left">
+    <div class="cfg">
+      <div>
+        <div class="sec">States &amp; Alphabet</div>
+        <div class="two">
+          <div><label>States</label><input id="ist" type="text" placeholder="q0,q1,q2" oninput="onCC()"></div>
+          <div><label>Alphabet</label><input id="ial" type="text" placeholder="0,1" oninput="onCC()"></div>
+        </div>
+      </div>
+      <div>
+        <label>Start state</label>
+        <select id="istart" onchange="onStartChange()"></select>
+      </div>
+      <div>
+        <label>Final states <span style="color:var(--dim)">(click to toggle)</span></label>
+        <div class="chips" id="chips"></div>
+      </div>
+      <div>
+        <label>Transition function δ</label>
+        <div id="twrap" style="overflow-x:auto"></div>
+      </div>
+    </div>
+    <div class="errtxt" id="errtxt"></div>
+    <button class="mbtn" id="mbtn" onclick="startMin()" disabled>Minimize →</button>
+  </div>
+
+  <div class="right">
+    <div class="gabox">
+      <div class="galabel" id="glabel">Live DFA</div>
+      <div id="svgwrap"><svg id="dfasvg" xmlns="http://www.w3.org/2000/svg"></svg></div>
+    </div>
+
+    <div class="sbox">
+      <div class="snav">
+        <button class="nbtn" id="bprev" onclick="goPrev()" disabled>← Prev</button>
+        <span class="sctr" id="sctr"></span>
+        <button class="nbtn" id="bnext" onclick="goNext()" disabled>Next →</button>
+        <span class="stitle" id="stitle"></span>
+        <span class="cbadge" id="cbadge">Converged</span>
+      </div>
+      <div class="sbody">
+        <div class="sexpl" id="sexpl">
+          <div class="idle">
+            <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="16" stroke="currentColor" stroke-width="1.4"/><path d="M18 10v9l5 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            <span>Build your DFA, then click Minimize</span>
+          </div>
+        </div>
+        <div class="sright">
+          <div class="ptitle">Partition table</div>
+          <div class="pwrap" id="pwrap"><div style="color:var(--dim);padding:16px;text-align:center;font-size:11px">No data yet</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
