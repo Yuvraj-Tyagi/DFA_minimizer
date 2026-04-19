@@ -1,81 +1,230 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DFA Minimizer</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DFA Minimizer & Simulator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+  <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
+  <div id="cy-tooltip"></div>
 
-<header>
-  <h1>DFA <em>Minimizer</em></h1>
-  <div class="exs">
-    <button class="ex" onclick="loadEx('redundant')">Redundant states</button>
-    <button class="ex" onclick="loadEx('even0')">Even 0s &amp; 1s</button>
-    <button class="ex" onclick="loadEx('div3')">Div by 3</button>
-    <button class="ex" onclick="loadEx('ends1')">Ends with 1</button>
-  </div>
-</header>
-
-<div class="body">
-  <div class="left">
-    <div class="cfg">
-      <div>
-        <div class="sec">States &amp; Alphabet</div>
-        <div class="two">
-          <div><label>States</label><input id="ist" type="text" placeholder="q0,q1,q2" oninput="onCC()"></div>
-          <div><label>Alphabet</label><input id="ial" type="text" placeholder="0,1" oninput="onCC()"></div>
-        </div>
+  <!-- Transition edge modal -->
+  <div id="trans-modal">
+    <div class="tm-box">
+      <div class="tm-title" id="tm-title">Add / Edit Transition</div>
+      <div class="tm-row">
+        <span class="tm-label">From</span>
+        <span id="tm-from" style="font-family:var(--mono);font-weight:700;color:var(--c1)"></span>
       </div>
-      <div>
-        <label>Start state</label>
-        <select id="istart" onchange="onStartChange()"></select>
+      <div class="tm-row">
+        <span class="tm-label">To</span>
+        <span id="tm-to" style="font-family:var(--mono);font-weight:700;color:var(--c4)"></span>
       </div>
-      <div>
-        <label>Final states <span style="color:var(--dim)">(click to toggle)</span></label>
-        <div class="chips" id="chips"></div>
+      <div class="tm-row">
+        <span class="tm-label">Symbol</span>
+        <select id="tm-symbol" style="max-width:140px;"></select>
       </div>
-      <div>
-        <label>Transition function δ</label>
-        <div id="twrap" style="overflow-x:auto"></div>
+      <div class="tm-btns">
+        <button class="tm-btn danger" id="tm-delete-btn" onclick="transModalDelete()">Delete</button>
+        <button class="tm-btn" onclick="transModalCancel()">Cancel</button>
+        <button class="tm-btn primary" onclick="transModalSave()">Save</button>
       </div>
     </div>
-    <div class="errtxt" id="errtxt"></div>
-    <button class="mbtn" id="mbtn" onclick="startMin()" disabled>Minimize →</button>
   </div>
 
-  <div class="right">
-    <div class="gabox">
-      <div class="galabel" id="glabel">Live DFA</div>
-      <div id="svgwrap"><svg id="dfasvg" xmlns="http://www.w3.org/2000/svg"></svg></div>
-    </div>
-
-    <div class="sbox">
-      <div class="snav">
-        <button class="nbtn" id="bprev" onclick="goPrev()" disabled>← Prev</button>
-        <span class="sctr" id="sctr"></span>
-        <button class="nbtn" id="bnext" onclick="goNext()" disabled>Next →</button>
-        <span class="stitle" id="stitle"></span>
-        <span class="cbadge" id="cbadge">Converged</span>
+  <!-- State name modal -->
+  <div id="name-modal">
+    <div class="tm-box">
+      <div class="tm-title">Name this State</div>
+      <div class="tm-row">
+        <span class="tm-label">Name</span>
+        <input type="text" id="nm-input" placeholder="q0" style="max-width:140px;"
+          onkeydown="if(event.key==='Enter')nameModalSave()">
       </div>
-      <div class="sbody">
-        <div class="sexpl" id="sexpl">
-          <div class="idle">
-            <svg width="36" height="36" viewBox="0 0 36 36" fill="none"><circle cx="18" cy="18" r="16" stroke="currentColor" stroke-width="1.4"/><path d="M18 10v9l5 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-            <span>Build your DFA, then click Minimize</span>
+      <div class="tm-btns">
+        <button class="tm-btn" onclick="nameModalCancel()">Cancel</button>
+        <button class="tm-btn primary" onclick="nameModalSave()">Add State</button>
+      </div>
+    </div>
+  </div>
+
+  <header>
+    <h1>DFA <em>Minimizer</em> <span
+        style="font-size:12px;color:var(--muted);font-weight:400;margin-left:10px;">Animated Proof Assistant</span></h1>
+    <div class="view-tabs">
+      <button class="vtab active" id="tab-min" onclick="switchView('minimizer')">Minimizer Tool</button>
+      <button class="vtab" id="tab-sim" onclick="switchView('simulator')">Path Simulator</button>
+      <button class="vtab" id="tab-prac" onclick="switchView('practice')">Practice Mode</button>
+    </div>
+    <div class="exs" id="header-actions">
+      <button class="ex theme-btn" onclick="toggleTheme()" id="theme-btn">☀️ Light Mode</button>
+    </div>
+  </header>
+
+  <div class="view-wrapper active" id="view-minimizer">
+    <div class="left" id="left-panel">
+      <div style="display:flex;align-items:center;gap:6px;padding:10px 20px 0;flex-shrink:0;">
+        <span
+          style="color:var(--dim);font-size:10px;font-weight:600;letter-spacing:.5px;white-space:nowrap;">RANDOM:</span>
+        <button class="ex gen-btn" style="border-color:var(--c4);color:var(--c4);padding:4px 10px;font-size:11px;"
+          onclick="genRandom('easy')">Easy</button>
+        <button class="ex gen-btn" style="border-color:var(--c2);color:var(--c2);padding:4px 10px;font-size:11px;"
+          onclick="genRandom('medium')">Medium</button>
+        <button class="ex gen-btn" style="border-color:var(--c3);color:var(--c3);padding:4px 10px;font-size:11px;"
+          onclick="genRandom('hard')">Hard</button>
+      </div>
+      <div class="cfg">
+        <div>
+          <div class="sec">States &amp; Alphabet</div>
+          <div class="two">
+            <div><label>States</label><input id="ist" type="text" placeholder="q0,q1,q2" oninput="onCC()"></div>
+            <div><label>Alphabet</label><input id="ial" type="text" placeholder="0,1" oninput="onCC()"></div>
           </div>
         </div>
-        <div class="sright">
-          <div class="ptitle">Partition table</div>
-          <div class="pwrap" id="pwrap"><div style="color:var(--dim);padding:16px;text-align:center;font-size:11px">No data yet</div></div>
+        <div>
+          <label>Start state</label><select id="istart" onchange="onStartChange()"></select>
+        </div>
+        <div>
+          <label>Final states <span style="font-weight:400;color:var(--dim)">(click to toggle)</span></label>
+          <div class="chips" id="chips"></div>
+        </div>
+        <div>
+          <label>Transition function δ</label>
+          <div id="twrap" style="overflow-x:auto;padding-bottom:4px;"></div>
+        </div>
+        <hr style="border:none;border-top:1px solid var(--border);margin:8px 0;">
+        <div>
+          <label style="display:flex;justify-content:space-between;margin-top:8px;">Animation Speed</label>
+          <input type="range" id="anim-speed" min="200" max="3000" step="100" value="2200"
+            oninput="updateSpeed(this.value)">
+        </div>
+      </div>
+      <div class="errtxt" id="errtxt"></div>
+      <button class="mbtn" id="mbtn" onclick="startMin()" disabled>Start Minimization →</button>
+    </div>
+
+    <div class="gutter gutter-x" id="gutter-x"></div>
+
+    <div class="right">
+      <div class="right-canvas-col">
+        <div class="gabox" id="gabox">
+          <div id="cy-container" class="cy-container-wrap"></div>
+
+          <!-- Canvas toolbar -->
+          <div class="canvas-toolbar" id="canvas-toolbar">
+            <button class="ct-btn" id="ct-undo" onclick="canvasUndo()" disabled title="Undo (Ctrl+Z)">↩ Undo</button>
+            <button class="ct-btn" id="ct-redo" onclick="canvasRedo()" disabled title="Redo (Ctrl+Y)">↪ Redo</button>
+            <div class="ct-sep"></div>
+            <button class="ct-btn" id="ct-clear" onclick="canvasClear()" title="Clear all">🗑 Clear</button>
+            <button class="ct-btn" onclick="fitGraph()" title="Auto-layout">✨ Layout</button>
+          </div>
+
+          <div class="drag-hint" id="canvas-hint">Drag nodes · Scroll to zoom · Right-click canvas to add state ·
+            Ctrl+click nodes to draw edges · Dbl-click node to toggle final/start</div>
+        </div>
+      </div>
+
+      <div class="gutter-expl" id="gutter-expl"></div>
+
+      <div class="right-expl-col" id="right-expl-col">
+        <div class="snav">
+          <button class="nbtn" id="bprev" onclick="goPrev()" disabled>← Prev</button>
+          <span class="sctr" id="sctr"></span>
+          <button class="nbtn" id="bnext" onclick="goNext()" disabled>Next →</button>
+          <span class="cbadge" id="cbadge">Converged</span>
+        </div>
+        <div class="stitle" id="stitle" style="flex-shrink:0;"></div>
+        <div class="sexpl" id="sexpl">
+          <div class="idle"><svg width="42" height="42" viewBox="0 0 36 36" fill="none">
+              <circle cx="18" cy="18" r="16" stroke="currentColor" stroke-width="1.8" />
+              <path d="M18 10v9l5 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none" />
+            </svg><span>Build your DFA, then click Start Minimization</span></div>
+        </div>
+        <div class="expl-partition-section">
+          <div class="ptitle">Partition Table</div>
+          <div class="pwrap" id="pwrap">
+            <div style="color:var(--dim);padding:16px;text-align:center;font-size:12px;font-weight:500;">No data yet
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
-</div>
 
-<script src="js/app.js"></script>
+  <div class="view-wrapper sim-wrapper" id="view-simulator">
+    <div class="sim-header">
+      <div class="sim-ctrls">
+        <input type="text" id="sim-input" placeholder="e.g. 0101" oninput="simOnInput()">
+        <button class="sim-btn primary" id="sim-btn-play" onclick="simPlay()">Play</button>
+        <button class="sim-btn" id="sim-btn-prev" onclick="simPrev()" disabled>Prev</button>
+        <button class="sim-btn" id="sim-btn-step" onclick="simStep()" disabled>Next</button>
+        <button class="sim-btn" id="sim-btn-reset" onclick="simReset()">Reset</button>
+        <div class="sim-speed-box">
+          <label style="font-size:11px;color:var(--dim);font-weight:600;text-transform:uppercase;">Speed</label>
+          <input type="range" id="sim-anim-speed" min="200" max="3000" step="100" value="2200" style="width:80px;"
+            oninput="updateSpeed(this.value)">
+        </div>
+      </div>
+      <div class="sim-tape" id="sim-tape"></div>
+    </div>
+    <div class="sim-graphs">
+      <div class="sim-half gabox">
+        <div class="galabel">Original DFA</div>
+        <div id="cy-orig-container" class="cy-container-wrap"></div>
+        <button class="fit-btn" onclick="fitSimGraph('orig')">✨ Auto-Layout</button>
+        <div class="sim-status-bar" id="sim-stat-orig"></div>
+      </div>
+      <div class="sim-half gabox">
+        <div class="galabel">Minimized DFA</div>
+        <div id="cy-min-container" class="cy-container-wrap"></div>
+        <button class="fit-btn" onclick="fitSimGraph('min')">✨ Auto-Layout</button>
+        <div class="sim-status-bar" id="sim-stat-min"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="view-wrapper prac-wrapper" id="view-practice">
+    <div class="prac-left">
+      <div style="font-size:16px;margin-bottom:8px;color:var(--c1);font-weight:600;">Partition Practice</div>
+      <p class="prac-desc">Group the states into their final equivalence classes. Click a state to select it, then click
+        a target group to move it.</p>
+      <div style="display:flex;gap:8px;margin-bottom:16px;">
+        <button class="sim-btn primary" style="flex:1" onclick="startPracticeChallenge('easy')">Easy</button>
+        <button class="sim-btn" style="flex:1" onclick="startPracticeChallenge('medium')">Medium</button>
+        <button class="sim-btn" style="flex:1" onclick="startPracticeChallenge('hard')">Hard</button>
+      </div>
+      <div class="prac-box" data-label="Unassigned States" id="prac-unassigned" onclick="assignPracState(this)"></div>
+      <div class="prac-box unreach" data-label="🗑️ Unreachable" id="prac-trash" onclick="assignPracState(this)"></div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:12px 0;">
+      <div
+        style="font-size:12px;color:var(--dim);text-transform:uppercase;margin-bottom:12px;letter-spacing:1px;font-weight:600;">
+        Equivalence Classes</div>
+      <div id="prac-groups-container"></div>
+      <button class="add-grp-btn" onclick="addPracGroup()">+ Add New Group</button>
+      <button class="mbtn" id="verify-prac-btn" style="margin:0;width:100%;" onclick="checkPracticeAnswer()">Verify
+        Minimization</button>
+      <div id="prac-feedback"></div>
+    </div>
+    <div class="prac-right gabox">
+      <div class="galabel">Challenge DFA</div>
+      <div id="cy-prac-container" class="cy-container-wrap"></div>
+      <button class="fit-btn"
+        onclick="if(pracCy){pracCy.layout({name:'cose',animate:true,animationDuration:800,padding:50}).run();}">✨
+        Auto-Layout</button>
+      <div class="drag-hint">Hover over edges to view transition rules</div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
 </body>
+
 </html>
